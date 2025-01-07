@@ -40,22 +40,22 @@ config MAX_TX_POWER_LEVEL
     default 7
 
 config SLE_MAC_ADDR_1ST_BYTE
-    int "Set MAC address 1st byte."
+    hex "Set MAC address 1st byte."
     default 0x11
 config SLE_MAC_ADDR_2ND_BYTE
-    int "Set MAC address 2nd byte."
+    hex "Set MAC address 2nd byte."
     default 0x22
 config SLE_MAC_ADDR_3RD_BYTE
-    int "Set MAC address 3rd byte."
+    hex "Set MAC address 3rd byte."
     default 0x33
 config SLE_MAC_ADDR_4TH_BYTE
-    int "Set MAC address 4th byte."
+    hex "Set MAC address 4th byte."
     default 0x44
 config SLE_MAC_ADDR_5TH_BYTE
-    int "Set MAC address 5th byte."
+    hex "Set MAC address 5th byte."
     default 0x55
 config SLE_MAC_ADDR_6TH_BYTE
-    int "Set MAC address 6th byte."
+    hex "Set MAC address 6th byte."
     default 0x66
 endmenu
 
@@ -70,22 +70,22 @@ config RECV_PKT_CNT
     int "Set receive packet count."
     default 1000
 config SCANNED_SLE_MAC_ADDR_1ST_BYTE
-    int "Set Scanned MAC address 1st byte."
+    hex "Set Scanned MAC address 1st byte."
     default 0x11
 config SCANNED_SLE_MAC_ADDR_2ND_BYTE
-    int "Set Scanned MAC address 2nd byte."
+    hex "Set Scanned MAC address 2nd byte."
     default 0x22
 config SCANNED_SLE_MAC_ADDR_3RD_BYTE
-    int "Set Scanned MAC address 3rd byte."
+    hex "Set Scanned MAC address 3rd byte."
     default 0x33
 config SCANNED_SLE_MAC_ADDR_4TH_BYTE
-    int "Set Scanned MAC address 4th byte."
+    hex "Set Scanned MAC address 4th byte."
     default 0x44
 config SCANNED_SLE_MAC_ADDR_5TH_BYTE
-    int "Set Scanned MAC address 5th byte."
+    hex "Set Scanned MAC address 5th byte."
     default 0x55
 config SCANNED_SLE_MAC_ADDR_6TH_BYTE
-    int "Set Scanned MAC address 6th byte."
+    hex "Set Scanned MAC address 6th byte."
     default 0x66
 endmenu
 
