@@ -15,17 +15,78 @@ config SAMPLE_SUPPORT_SLE_UUID_CLIENT_SAMPLE
 config SAMPLE_SUPPORT_SLE_SPEED_SERVER_SAMPLE
     bool "Support SLE Throughput Server Sample."
 
+menu "SLE speed server sample configuration"
+    depends on SAMPLE_SUPPORT_SLE_SPEED_SERVER_SAMPLE
 config LARGE_THROUGHPUT_SERVER
     bool "server large throughput."
     default y
-    depends on SAMPLE_SUPPORT_SLE_SPEED_SERVER_SAMPLE
+config SPEED_DEFAULT_CONN_INTERVAL
+    int "Set default connection interval."
+    default 20
+config PKT_DATA_LEN
+    int "Set packet data length."
+    default 1370
+config FRAME_FORMAT
+    int "Set frame format (0:SLE_RADIO_FRAME_1, 1:SLE_RADIO_FRAME_2)."
+    default 1
+config PHY
+    int "Set PHY (0:SLE_PHY_1M, 1:SLE_PHY_1M, 2:SLE_PHY_4M)."
+    default 2
+config MCS
+    int "Set MCS."
+    default 6
+config MAX_TX_POWER_LEVEL
+    int "Set max tx power level (nv: 0x20A0)."
+    default 7
+
+config SLE_MAC_ADDR_1ST_BYTE
+    int "Set MAC address 1st byte."
+    default 0x11
+config SLE_MAC_ADDR_2ND_BYTE
+    int "Set MAC address 2nd byte."
+    default 0x22
+config SLE_MAC_ADDR_3RD_BYTE
+    int "Set MAC address 3rd byte."
+    default 0x33
+config SLE_MAC_ADDR_4TH_BYTE
+    int "Set MAC address 4th byte."
+    default 0x44
+config SLE_MAC_ADDR_5TH_BYTE
+    int "Set MAC address 5th byte."
+    default 0x55
+config SLE_MAC_ADDR_6TH_BYTE
+    int "Set MAC address 6th byte."
+    default 0x66
+endmenu
 
 config SAMPLE_SUPPORT_SLE_SPEED_CLIENT_SAMPLE
     bool "Support SLE Throughput Client Sample."
-
+menu "SLE speed client sample configuration"
+    depends on SAMPLE_SUPPORT_SLE_SPEED_CLIENT_SAMPLE
 config LARGE_THROUGHPUT_CLIENT
     bool "client large throughput."
     default y
-    depends on SAMPLE_SUPPORT_SLE_SPEED_CLIENT_SAMPLE
+config RECV_PKT_CNT
+    int "Set receive packet count."
+    default 1000
+config SCANNED_SLE_MAC_ADDR_1ST_BYTE
+    int "Set Scanned MAC address 1st byte."
+    default 0x11
+config SCANNED_SLE_MAC_ADDR_2ND_BYTE
+    int "Set Scanned MAC address 2nd byte."
+    default 0x22
+config SCANNED_SLE_MAC_ADDR_3RD_BYTE
+    int "Set Scanned MAC address 3rd byte."
+    default 0x33
+config SCANNED_SLE_MAC_ADDR_4TH_BYTE
+    int "Set Scanned MAC address 4th byte."
+    default 0x44
+config SCANNED_SLE_MAC_ADDR_5TH_BYTE
+    int "Set Scanned MAC address 5th byte."
+    default 0x55
+config SCANNED_SLE_MAC_ADDR_6TH_BYTE
+    int "Set Scanned MAC address 6th byte."
+    default 0x66
+endmenu
 
 endchoice

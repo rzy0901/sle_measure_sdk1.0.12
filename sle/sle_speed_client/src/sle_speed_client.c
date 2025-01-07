@@ -36,7 +36,8 @@ static uint64_t g_count_before_get_us;
 static uint64_t g_count_after_get_us;
 
 #ifdef CONFIG_LARGE_THROUGHPUT_CLIENT
-#define RECV_PKT_CNT 1000
+// #define RECV_PKT_CNT 1000
+#define RECV_PKT_CNT CONFIG_RECV_PKT_CNT
 #else
 #define RECV_PKT_CNT 1
 #endif
@@ -74,7 +75,8 @@ void sle_sample_seek_disable_cbk(errcode_t status)
 void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
 {
     if (seek_result_data != NULL) {
-        uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+        // uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+        uint8_t mac[SLE_ADDR_LEN] = {CONFIG_SCANNED_SLE_MAC_ADDR_1ST_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_2ND_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_3RD_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_4TH_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_5TH_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_6TH_BYTE};
         if (memcmp(seek_result_data->addr.addr, mac, SLE_ADDR_LEN) == 0) {
             (void)memcpy_s(&g_remote_addr, sizeof(sle_addr_t), &seek_result_data->addr, sizeof(sle_addr_t));
             sle_stop_seek();
@@ -353,6 +355,7 @@ void sle_start_scan()
 
 int sle_speed_init(void)
 {
+    printf("CONFIG_RECV_PKT_CNT = %d, CONFIG_SCANNED_SLE_MAC_ADDR_1ST_BYTE = %d, CONFIG_SCANNED_SLE_MAC_ADDR_2ND_BYTE = %d, CONFIG_SCANNED_SLE_MAC_ADDR_3RD_BYTE = %d, CONFIG_SCANNED_SLE_MAC_ADDR_4TH_BYTE = %d, CONFIG_SCANNED_SLE_MAC_ADDR_5TH_BYTE = %d, CONFIG_SCANNED_SLE_MAC_ADDR_6TH_BYTE = %d\r\n", CONFIG_RECV_PKT_CNT, CONFIG_SCANNED_SLE_MAC_ADDR_1ST_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_2ND_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_3RD_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_4TH_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_5TH_BYTE, CONFIG_SCANNED_SLE_MAC_ADDR_6TH_BYTE);
     osal_msleep(1000);  /* sleep 1000ms */
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;

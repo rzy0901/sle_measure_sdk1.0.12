@@ -53,8 +53,10 @@ static sle_link_qos_state_t g_sle_link_state = 0;  /* sle link state */
 #endif
 
 #ifdef CONFIG_LARGE_THROUGHPUT_SERVER
-#define PKT_DATA_LEN 1200
-#define SPEED_DEFAULT_CONN_INTERVAL 0x14
+// #define PKT_DATA_LEN 1200
+// #define SPEED_DEFAULT_CONN_INTERVAL 0x14
+#define PKT_DATA_LEN CONFIG_PKT_DATA_LEN
+#define SPEED_DEFAULT_CONN_INTERVAL CONFIG_SPEED_DEFAULT_CONN_INTERVAL
 #else
 #define PKT_DATA_LEN 600
 #define SPEED_DEFAULT_CONN_INTERVAL 0xA0
@@ -174,12 +176,17 @@ void send_data_thread_function(void)
 {
     sle_set_data_len(g_sle_conn_hdl, DEFAULT_SLE_SPEED_DATA_LEN);
 #ifdef CONFIG_LARGE_THROUGHPUT_SERVER
-#define DEFAULT_SLE_SPEED_MCS 10
+// #define DEFAULT_SLE_SPEED_MCS 10
+#define DEFAULT_SLE_SPEED_MCS CONFIG_MCS
     sle_set_phy_t phy_parm = {
-        .tx_format = SLE_RADIO_FRAME_2,
-        .rx_format = SLE_RADIO_FRAME_2,
-        .tx_phy = SLE_PHY_4M,
-        .rx_phy = SLE_PHY_4M,
+        // .tx_format = SLE_RADIO_FRAME_2,
+        // .rx_format = SLE_RADIO_FRAME_2,
+        // .tx_phy = SLE_PHY_4M,
+        // .rx_phy = SLE_PHY_4M,
+        .tx_format = CONFIG_FRAME_FORMAT,
+        .rx_format = CONFIG_FRAME_FORMAT,
+        .tx_phy = CONFIG_PHY,
+        .rx_phy = CONFIG_PHY,
         .tx_pilot_density = SLE_PHY_PILOT_DENSITY_16_TO_1,
         .rx_pilot_density = SLE_PHY_PILOT_DENSITY_16_TO_1,
         .g_feedback = 0,
@@ -187,9 +194,10 @@ void send_data_thread_function(void)
     };
     sle_set_phy_param(g_sle_conn_hdl, &phy_parm);
     sle_set_mcs(g_sle_conn_hdl, DEFAULT_SLE_SPEED_MCS);
-    osal_printk("code: ploar MCS10, PHY 4MHZ, power: 20dbm \r\n");
+    // osal_printk("code: ploar MCS10, PHY 4MHZ, power: 20dbm \r\n");
+    osal_printk("Frame format:%d, MCS:%d, PHY: %d\r\n", CONFIG_FRAME_FORMAT, DEFAULT_SLE_SPEED_MCS, CONFIG_PHY);
 #else
-    osal_printk("code: GFSK, PHY 1MHZ, power: 20dbm \r\n");
+    // osal_printk("code: GFSK, PHY 1MHZ, power: 20dbm \r\n");
 #endif
     int i = 0;
     while (1) {
@@ -378,7 +386,8 @@ void sle_speed_connect_param_init(void)
 void sle_set_local_addr_init(void)
 {
     sle_addr_t addr = {0};
-    uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+    // uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+    uint8_t mac[SLE_ADDR_LEN] = {CONFIG_SLE_MAC_ADDR_1ST_BYTE, CONFIG_SLE_MAC_ADDR_2ND_BYTE, CONFIG_SLE_MAC_ADDR_3RD_BYTE, CONFIG_SLE_MAC_ADDR_4TH_BYTE, CONFIG_SLE_MAC_ADDR_5TH_BYTE, CONFIG_SLE_MAC_ADDR_6TH_BYTE};
     addr.type = 0;
     memcpy_s(addr.addr, SLE_ADDR_LEN, mac, SLE_ADDR_LEN);
     sle_set_local_addr(&addr);
@@ -386,13 +395,15 @@ void sle_set_local_addr_init(void)
 
 void sle_speed_server_set_nv(void)
 {
-    uint16_t nv_value_len = 0;
+    // uint16_t nv_value_len = 0;
     uint8_t nv_value = 0;
-    uapi_nv_read(0x20A0, sizeof(uint16_t), &nv_value_len, &nv_value);
-    if (nv_value != 7) {     // 7:btc功率档位
-        nv_value = 7;       // 7:btc功率档位
-        uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
-    }
+    // uapi_nv_read(0x20A0, sizeof(uint16_t), &nv_value_len, &nv_value);
+    // if (nv_value != 7) {     // 7:btc功率档位
+    //     nv_value = 7;       // 7:btc功率档位
+    //     uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
+    // }
+    nv_value = CONFIG_MAX_TX_POWER_LEVEL;
+    uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
     osal_printk("[speed server] The value of nv is set to %d.\r\n", nv_value);
 }
 
@@ -423,6 +434,7 @@ int sle_speed_init(void)
         data[i] = 'A';
         data[PKT_DATA_LEN - 1] = '\0';
     }
+        printf("CONFIG_SPEED_DEFAULT_CONN_INTERVAL = %d, CONFIG_PKT_DATA_LEN = %d, CONFIG_FRAME_FORMAT = %d, CONFIG_PHY = %d, CONFIG_MCS = %d, CONFIG_MAX_TX_POWER_LEVEL = %d, CONFIG_SLE_MAC_ADDR_1ST_BYTE = %d, CONFIG_SLE_MAC_ADDR_2ND_BYTE = %d, CONFIG_SLE_MAC_ADDR_3RD_BYTE = %d, CONFIG_SLE_MAC_ADDR_4TH_BYTE = %d, CONFIG_SLE_MAC_ADDR_5TH_BYTE = %d, CONFIG_SLE_MAC_ADDR_6TH_BYTE = %d\r\n", CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_PKT_DATA_LEN, CONFIG_FRAME_FORMAT, CONFIG_PHY, CONFIG_MCS, CONFIG_MAX_TX_POWER_LEVEL, CONFIG_SLE_MAC_ADDR_1ST_BYTE, CONFIG_SLE_MAC_ADDR_2ND_BYTE, CONFIG_SLE_MAC_ADDR_3RD_BYTE, CONFIG_SLE_MAC_ADDR_4TH_BYTE, CONFIG_SLE_MAC_ADDR_5TH_BYTE, CONFIG_SLE_MAC_ADDR_6TH_BYTE);
     osal_msleep(1000);  /* sleep 1000ms */
     sle_speed_server_init();
     return 0;
