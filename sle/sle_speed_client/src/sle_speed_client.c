@@ -112,6 +112,9 @@ static void sle_speed_notification_cb(uint8_t client_id, uint16_t conn_id, ssapc
         uint16_t len = data->data_len;
         float speed = len * RECV_PKT_CNT * 8 / time;  /* 1B = 8bits */
         printf("speed = %d.%d bps\r\n", get_float_int(speed), get_float_dec(speed));
+        // print peer address
+        printf("peer address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", g_remote_addr.addr[0], g_remote_addr.addr[1],
+            g_remote_addr.addr[2], g_remote_addr.addr[3], g_remote_addr.addr[4], g_remote_addr.addr[5]);
         g_recv_pkt_num = 0;
         g_count_before_get_us = g_count_after_get_us;
     }
