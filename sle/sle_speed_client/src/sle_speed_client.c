@@ -191,6 +191,26 @@ void sle_sample_read_rssi_cbk(uint16_t conn_id, int8_t rssi, errcode_t status)
     }
 }
 
+void sle_sample_set_phy_cbk(uint16_t conn_id, errcode_t status, const sle_set_phy_t *param)
+{
+osal_printk("[ssap client] set phy cbk conn_id:%d, status:%d, tx_format:%d, rx_format:%d, tx_phy:%d, rx_phy:%d, "
+    "tx_pilot_density:%d, rx_pilot_density:%d, g_feedback:%d, t_feedback:%d\n", conn_id, status, param->tx_format,
+    param->rx_format, param->tx_phy, param->rx_phy, param->tx_pilot_density, param->rx_pilot_density,
+    param->g_feedback, param->t_feedback);
+}
+
+void sle_sample_auth_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errcode_t status, const sle_auth_info_evt_t* evt)
+{
+    // print link key
+    osal_printk("[ssap client] auth complete conn_id:%d, addr:%02x***%02x%02x, status:%d\n", conn_id, addr->addr[0],
+        addr->addr[4], addr->addr[5], status); /* 0 4 5: addr index */
+    osal_printk("[ssap client] auth complete link key:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", evt->link_key[0],
+        evt->link_key[1], evt->link_key[2], evt->link_key[3], evt->link_key[4], evt->link_key[5],
+        evt->link_key[6], evt->link_key[7], evt->link_key[8], evt->link_key[9], evt->link_key[10], evt->link_key[11], evt->link_key[12], evt->link_key[13], evt->link_key[14], evt->link_key[15]);
+    osal_printk("[ssap client] auth complete crypto_algo:%d, key_deriv_algo:%d, integr_chk_ind:%d\n",
+        evt->crypto_algo, evt->key_deriv_algo, evt->integr_chk_ind);
+}
+
 void sle_sample_connect_cbk_register(void)
 {
     g_connect_cbk.connect_state_changed_cb = sle_sample_connect_state_changed_cbk;
@@ -198,6 +218,8 @@ void sle_sample_connect_cbk_register(void)
     g_connect_cbk.connect_param_update_req_cb = sle_sample_update_req_cbk;
     g_connect_cbk.connect_param_update_cb = sle_sample_update_cbk;
     g_connect_cbk.read_rssi_cb = sle_sample_read_rssi_cbk;
+    g_connect_cbk.set_phy_cb = sle_sample_set_phy_cbk;
+    g_connect_cbk.auth_complete_cb = sle_sample_auth_complete_cbk;
 }
 
 void sle_sample_exchange_info_cbk(uint8_t client_id, uint16_t conn_id, ssap_exchange_info_t *param,
