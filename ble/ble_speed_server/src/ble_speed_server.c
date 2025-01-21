@@ -24,6 +24,7 @@
 #include "bts_gatt_client.h"
 #include "ble_speed_server_adv.h"
 #include "ble_speed_server.h"
+#include "nv.h"
 
 uint8_t g_server_id = 0;
 
@@ -47,7 +48,8 @@ bd_addr_t g_ble_speed_addr = {
     .addr = {0x11, 0x22, 0x33, 0x63, 0x88, 0x63},
 };
 
-#define DATA_LEN 236
+// #define DATA_LEN 236
+#define DATA_LEN CONFIG_PKT_DATA_LEN
 unsigned char data[DATA_LEN];
 uint64_t g_count_before_get_us;
 uint64_t g_count_after_get_us;
@@ -56,7 +58,8 @@ uint64_t g_count_after_get_us;
 #define DEFAULT_BLE_SPEED_MTU_SIZE 250
 #define GAP_MAX_TX_OCTETS 251
 #define GAP_MAX_TX_TIME 2000
-#define SPEED_DEFAULT_CONN_INTERVAL 0xA
+// #define SPEED_DEFAULT_CONN_INTERVAL 0xA
+#define SPEED_DEFAULT_CONN_INTERVAL CONFIG_SPEED_DEFAULT_CONN_INTERVAL
 #define SPPED_DEFAULT_SLAVE_LATENCY 0
 #define SPEED_DEFAULT_TIMEOUT_MULTIPLIER 0x1f4
 
@@ -69,8 +72,10 @@ void send_data_thread_function(void)
     gap_le_set_phy_t phy_param = {
         .conn_handle    = g_conn_hdl,
         .all_phys       = 0,
-        .tx_phys        = 1,
-        .rx_phys        = 1,
+        // .tx_phys        = 1,
+        // .rx_phys        = 1,
+        .tx_phys = CONFIG_PHY,
+        .rx_phys = CONFIG_PHY,
         .phy_options    = 0,
     };
     gap_ble_set_phy(&phy_param);
@@ -352,11 +357,28 @@ static errcode_t ble_uuid_gatts_register_server(void)
     return gatts_register_server(&app_uuid, &g_server_id);
 }
 
+void ble_speed_server_set_nv(void)
+{
+    // uint16_t nv_value_len = 0;
+    uint8_t nv_value = 0;
+    // uapi_nv_read(0x20A0, sizeof(uint16_t), &nv_value_len, &nv_value);
+    // if (nv_value != 7) {     // 7:btc功率档位
+    //     nv_value = 7;       // 7:btc功率档位
+    //     uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
+    // }
+    nv_value = CONFIG_MAX_TX_POWER_LEVEL;
+    uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
+    osal_printk("[speed server] The value of nv is set to %d.\r\n", nv_value);
+}
+
 /* 初始化uuid server service */
 errcode_t ble_uuid_server_init(void)
 {
+    printf("CONFIG_SPEED_DEFAULT_CONN_INTERVAL = %d, CONFIG_PKT_DATA_LEN = %d, CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_MAX_TX_POWER_LEVEL = %d\n",
+            CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_PKT_DATA_LEN, CONFIG_SPEED_DEFAULT_CONN_INTERVAL,CONFIG_MAX_TX_POWER_LEVEL);
     (void)osal_msleep(1000); /* 延时1000ms，等待BLE初始化完毕 */
     enable_ble();
+    ble_speed_server_set_nv();
     ble_uuid_server_register_callbacks();
     ble_uuid_gatts_register_server();
     ble_uuid_add_service();

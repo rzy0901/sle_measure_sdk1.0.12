@@ -15,6 +15,22 @@ config SAMPLE_SUPPORT_BLE_GATT_SERVER_SAMPLE
 config SAMPLE_SUPPORT_BLE_SPEED_SERVER_SAMPLE
     bool "Support BLE Throughput Server Sample."
 
+menu "BLE speed server sample configuration"
+    depends on SAMPLE_SUPPORT_BLE_SPEED_SERVER_SAMPLE
+config SPEED_DEFAULT_CONN_INTERVAL
+    int "Set default connection interval (1 slot = 1.25ms)."
+    default 10
+config PKT_DATA_LEN
+    int "Set packet data length."
+    default 244
+config PHY
+    int "Set PHY (1:1M, 1:2M)."
+    default 1
+config MAX_TX_POWER_LEVEL
+    int "Set max tx power level (nv: 0x20A0)."
+    default 3
+endmenu
+
 config SAMPLE_SUPPORT_BLE_SPEED_CLIENT_SAMPLE
     bool "Support BLE Throughput Client Sample"
 
