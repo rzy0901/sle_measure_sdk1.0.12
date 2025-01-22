@@ -24,7 +24,7 @@ config PKT_DATA_LEN
     int "Set packet data length."
     default 244
 config PHY
-    int "Set PHY (1:1M, 1:2M)."
+    int "Set PHY (1:1M, 2:2M)."
     default 1
 config MAX_TX_POWER_LEVEL
     int "Set max tx power level (nv: 0x20A0)."
