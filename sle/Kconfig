@@ -30,7 +30,7 @@ config FRAME_FORMAT
     int "Set frame format (0:SLE_RADIO_FRAME_1, 1:SLE_RADIO_FRAME_2)."
     default 1
 config PHY
-    int "Set PHY (0:SLE_PHY_1M, 1:SLE_PHY_1M, 2:SLE_PHY_4M)."
+    int "Set PHY (0:SLE_PHY_1M, 1:SLE_PHY_2M, 2:SLE_PHY_4M)."
     default 2
 config MCS
     int "Set MCS."
