@@ -57,7 +57,8 @@ uint64_t g_count_after_get_us;
 #define SEND_PKT_CNT 100
 #define DEFAULT_BLE_SPEED_MTU_SIZE 250
 #define GAP_MAX_TX_OCTETS 251
-#define GAP_MAX_TX_TIME 2000
+// #define GAP_MAX_TX_TIME 2000
+#define GAP_MAX_TX_TIME 3000
 // #define SPEED_DEFAULT_CONN_INTERVAL 0xA
 #define SPEED_DEFAULT_CONN_INTERVAL CONFIG_SPEED_DEFAULT_CONN_INTERVAL
 #define SPPED_DEFAULT_SLAVE_LATENCY 0
@@ -86,15 +87,18 @@ void send_data_thread_function(void)
         .maxtxtime      = GAP_MAX_TX_TIME,
     };
     gap_ble_set_data_length(&data_param);
+    osal_msleep(2000);  /* sleep 2000ms */
 
     int i = 0;
     g_count_before_get_us = uapi_systick_get_us();
+    // int sleep_time = CONFIG_SPEED_DEFAULT_CONN_INTERVAL * 1; // < CONFIG_SPEED_DEFAULT_CONN_INTERVAL * 1.25
     while (1) {
         i++;
         data[0] = (i >> 8) & 0xFF;  /* offset 8bits */
         data[1] = i & 0xFF;
         ble_uuid_server_send_report_by_uuid(data, DATA_LEN);
         osal_msleep(1); /* 延时1ms 可使用BLE流控机制替换 */
+        // osal_msleep(sleep_time);
         if (i == SEND_PKT_CNT) {
             i = 0;
             printf("[SYS INFO] send %d pkt: ", SEND_PKT_CNT);
@@ -359,7 +363,7 @@ static errcode_t ble_uuid_gatts_register_server(void)
 
 void ble_speed_server_set_nv(void)
 {
-    // uint16_t nv_value_len = 0;
+    uint16_t nv_value_len = 0;
     uint8_t nv_value = 0;
     // uapi_nv_read(0x20A0, sizeof(uint16_t), &nv_value_len, &nv_value);
     // if (nv_value != 7) {     // 7:btc功率档位
@@ -369,13 +373,16 @@ void ble_speed_server_set_nv(void)
     nv_value = CONFIG_MAX_TX_POWER_LEVEL;
     uapi_nv_write(0x20A0, (uint8_t *)&(nv_value), sizeof(nv_value));
     osal_printk("[speed server] The value of nv is set to %d.\r\n", nv_value);
+    (void)osal_msleep(1000); /* 延时1000ms，等待NV写入完成 */
+    uapi_nv_read(0x20A0, sizeof(uint16_t), &nv_value_len, &nv_value);
+    osal_printk("[speed server] [uapi_nv_read] The value of nv is %d.\r\n", nv_value);
 }
 
 /* 初始化uuid server service */
 errcode_t ble_uuid_server_init(void)
 {
-    printf("CONFIG_SPEED_DEFAULT_CONN_INTERVAL = %d, CONFIG_PKT_DATA_LEN = %d, CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_MAX_TX_POWER_LEVEL = %d\n",
-            CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_PKT_DATA_LEN, CONFIG_SPEED_DEFAULT_CONN_INTERVAL,CONFIG_MAX_TX_POWER_LEVEL);
+    printf("CONFIG_SPEED_DEFAULT_CONN_INTERVAL = %d, CONFIG_PKT_DATA_LEN = %d, CONFIG_PHY=%d, CONFIG_MAX_TX_POWER_LEVEL = %d\n",
+            CONFIG_SPEED_DEFAULT_CONN_INTERVAL, CONFIG_PKT_DATA_LEN, CONFIG_PHY,CONFIG_MAX_TX_POWER_LEVEL);
     (void)osal_msleep(1000); /* 延时1000ms，等待BLE初始化完毕 */
     enable_ble();
     ble_speed_server_set_nv();
