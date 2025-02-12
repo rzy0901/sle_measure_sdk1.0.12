@@ -12,6 +12,8 @@
 #include "osal_addr.h"
 #include "soc_osal.h"
 #include "common_def.h"
+#include "pinctrl.h"
+#include "gpio.h"
 
 #include "sle_common.h"
 #include "sle_errcode.h"
@@ -29,6 +31,9 @@
 #define BT_INDEX_4     4
 #define BT_INDEX_5     5
 #define BT_INDEX_0     0
+
+#define GPIO_PIN GPIO_00
+
 extern void send_data_thread_function(void);
 #define encode2byte_little(_ptr, data) \
     do { \
@@ -52,13 +57,8 @@ static uint16_t g_property_handle = 0;
 static sle_link_qos_state_t g_sle_link_state = 0;  /* sle link state */
 #endif
 
-#ifdef CONFIG_LARGE_THROUGHPUT_SERVER
-#define PKT_DATA_LEN 1200
-#define SPEED_DEFAULT_CONN_INTERVAL 0x14
-#else
-#define PKT_DATA_LEN 600
-#define SPEED_DEFAULT_CONN_INTERVAL 0xA0
-#endif
+#define PKT_DATA_LEN 244
+#define SPEED_DEFAULT_CONN_INTERVAL 0x14 // 2.5ms
 
 #define SPEED_DEFAULT_KTHREAD_SIZE 0x2000
 #define SPEED_DEFAULT_KTHREAD_PROI 26
@@ -170,11 +170,16 @@ uint8_t sle_flow_ctrl_flag(void)
 #endif
 }
 
+void send_signal(void) {
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_HIGH);
+    osal_udelay(100);  // 短暂延时，确保电平变化被捕获
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_LOW);
+}
+
 void send_data_thread_function(void)
 {
     sle_set_data_len(g_sle_conn_hdl, DEFAULT_SLE_SPEED_DATA_LEN);
-#ifdef CONFIG_LARGE_THROUGHPUT_SERVER
-#define DEFAULT_SLE_SPEED_MCS 10
+    #define DEFAULT_SLE_SPEED_MCS 6
     sle_set_phy_t phy_parm = {
         .tx_format = SLE_RADIO_FRAME_2,
         .rx_format = SLE_RADIO_FRAME_2,
@@ -187,23 +192,47 @@ void send_data_thread_function(void)
     };
     sle_set_phy_param(g_sle_conn_hdl, &phy_parm);
     sle_set_mcs(g_sle_conn_hdl, DEFAULT_SLE_SPEED_MCS);
-    osal_printk("code: ploar MCS10, PHY 4MHZ, power: 20dbm \r\n");
-#else
-    osal_printk("code: GFSK, PHY 1MHZ, power: 20dbm \r\n");
-#endif
-    int i = 0;
+    // #define CONFIG_SERVICE_LATENCY 1
+    // #ifdef CONFIG_SERVICE_LATENCY
+    // int conn_interval_ms = (int) (SPEED_DEFAULT_CONN_INTERVAL * 0.125);
+    // printf("conn_interval_ms = %d\n", conn_interval_ms);
+    // // 发送100组数据
+    // int send_delay_ms = conn_interval_ms *10;
+    // for (int j = 0; j < 100; j++) {
+    //     send_delay_ms++;
+    //     if (sle_flow_ctrl_flag() > 0) {
+    //         sle_uuid_server_send_report_by_handle_id(data, PKT_DATA_LEN, g_sle_conn_hdl);
+    //         send_signal();
+    //         osal_msleep(send_delay_ms);
+    //     } else {
+    //         osal_msleep(send_delay_ms);          
+    //     }
+    // }
+    // #endif
+    #define CONFIG_SERVICE_LATENCY 1
+    #ifdef CONFIG_SERVICE_LATENCY
+    int conn_interval_ms = (int) (SPEED_DEFAULT_CONN_INTERVAL * 0.125);
+    int conn_interval_us = (int) (SPEED_DEFAULT_CONN_INTERVAL * 125);
+    printf("conn_interval_ms (converted to int) = %d\n", conn_interval_ms);
+    // 无限循环发送数据，随机delay
     while (1) {
-        if (sle_flow_ctrl_flag() > 0) {
-            i++;
-            data[0] = (i >> 8) & 0xFF;  /* offset 8bits */
-            data[1] = i & 0xFF;
-            sle_uuid_server_send_report_by_handle_id(data, PKT_DATA_LEN, g_sle_conn_hdl);
+        // for (int i=0; i < conn_interval_ms+1; i++)
+        for (int i=0; i < conn_interval_us+1; i += 250)
+        {
+            int send_delay_ms = conn_interval_ms * 10;   
+            int send_delay_us = i;
+            if (sle_flow_ctrl_flag() > 0) {
+                sle_uuid_server_send_report_by_handle_id(data, PKT_DATA_LEN, g_sle_conn_hdl);
+                send_signal();
+                osal_msleep(send_delay_ms);
+                osal_udelay(send_delay_us);
+            } else {
+                osal_msleep(send_delay_ms);
+                osal_udelay(send_delay_us);
+            }
         }
-#ifndef CONFIG_LARGE_THROUGHPUT_SERVER
-        osal_msleep(1000);      /* sleep 1000ms */
-        i = 0;
-#endif
     }
+    #endif
 }
 
 static errcode_t sle_uuid_server_service_add(void)
@@ -419,6 +448,11 @@ errcode_t sle_speed_server_init(void)
 
 int sle_speed_init(void)
 {
+    // init gpio
+    uapi_pin_set_mode(GPIO_PIN, HAL_PIO_FUNC_GPIO);    //设置引脚复用模式为GPIO
+    uapi_gpio_set_dir(GPIO_PIN, GPIO_DIRECTION_OUTPUT);//设置GPIO方向为输出方向
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_LOW);       //设置GPIO输出低电平
+    osal_msleep(1000);  /* sleep 1000ms */
     for (int i = 0; i < PKT_DATA_LEN; i++) {
         data[i] = 'A';
         data[PKT_DATA_LEN - 1] = '\0';

@@ -10,6 +10,8 @@
 #include "securec.h"
 #include "soc_osal.h"
 #include "common_def.h"
+#include "pinctrl.h"
+#include "gpio.h"
 
 #include "sle_device_discovery.h"
 #include "sle_connection_manager.h"
@@ -19,6 +21,8 @@
 
 #undef THIS_FILE_ID
 #define THIS_FILE_ID BTH_GLE_SAMPLE_UUID_CLIENT
+
+#define GPIO_PIN GPIO_00
 
 #define SLE_MTU_SIZE_DEFAULT        1500
 #define SLE_SEEK_INTERVAL_DEFAULT   100
@@ -31,9 +35,6 @@
 #define SPEED_DEFAULT_SCAN_INTERVAL 400
 #define SPEED_DEFAULT_SCAN_WINDOW 20
 
-static int g_recv_pkt_num = 0;
-static uint64_t g_count_before_get_us;
-static uint64_t g_count_after_get_us;
 
 #ifdef CONFIG_LARGE_THROUGHPUT_CLIENT
 #define RECV_PKT_CNT 1000
@@ -82,38 +83,23 @@ void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
     }
 }
 
-static uint32_t get_float_int(float in)
-{
-    return (uint32_t)(((uint64_t)(in * SLE_SPEED_HUNDRED)) / SLE_SPEED_HUNDRED);
-}
 
-static uint32_t get_float_dec(float in)
-{
-    return (uint32_t)(((uint64_t)(in * SLE_SPEED_HUNDRED)) % SLE_SPEED_HUNDRED);
+void send_signal(void) {
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_HIGH);
+    osal_udelay(100);  // 短暂延时，确保电平变化被捕获
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_LOW);
 }
 
 static void sle_speed_notification_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data,
     errcode_t status)
 {
     unused(client_id);
+    unused(conn_id);
+    unused(data);
     unused(status);
-    sle_read_remote_device_rssi(conn_id); // 用于统计rssi均值
-
-    if (g_recv_pkt_num == 0) {
-        g_count_before_get_us = uapi_tcxo_get_us();
-    } else if (g_recv_pkt_num == RECV_PKT_CNT) {
-        g_count_after_get_us = uapi_tcxo_get_us();
-        printf("g_count_after_get_us = %llu, g_count_before_get_us = %llu, data_len = %d\r\n",
-            g_count_after_get_us, g_count_before_get_us, data->data_len);
-        float time = (float)(g_count_after_get_us - g_count_before_get_us) / 1000000.0;  /* 1s = 1000000.0us */
-        printf("time = %d.%d s\r\n", get_float_int(time), get_float_dec(time));
-        uint16_t len = data->data_len;
-        float speed = len * RECV_PKT_CNT * 8 / time;  /* 1B = 8bits */
-        printf("speed = %d.%d bps\r\n", get_float_int(speed), get_float_dec(speed));
-        g_recv_pkt_num = 0;
-        g_count_before_get_us = g_count_after_get_us;
-    }
-    g_recv_pkt_num++;
+    send_signal();
+    osal_printk("\n [sle_speed_notification_cbk] ENTER, send gpio signal to PIN: %d\r\n", GPIO_PIN);
+    /* GPIO */
 }
 
 static void sle_speed_indication_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data,
@@ -353,6 +339,10 @@ void sle_start_scan()
 
 int sle_speed_init(void)
 {
+    // init gpio
+    uapi_pin_set_mode(GPIO_PIN, HAL_PIO_FUNC_GPIO);    //设置引脚复用模式为GPIO
+    uapi_gpio_set_dir(GPIO_PIN, GPIO_DIRECTION_OUTPUT);//设置GPIO方向为输出方向
+    uapi_gpio_set_val(GPIO_PIN, GPIO_LEVEL_LOW);       //设置GPIO输出低电平
     osal_msleep(1000);  /* sleep 1000ms */
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;

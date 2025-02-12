@@ -89,4 +89,13 @@ config SCANNED_SLE_MAC_ADDR_6TH_BYTE
     default 0x66
 endmenu
 
+config SAMPLE_SLE_LATENCY_CLIENT_SAMPLE
+    bool "Support SLE Latency Client Sample."
+
+config SAMPLE_SLE_LATENCY_SERVER_SAMPLE
+    bool "Support SLE Latency Server Sample."
+
+config SAMPLE_SLE_LATENCY_GPIO_OBSERVER_SAMPLE
+    bool "Support SLE Latency GPIO Observer."
+
 endchoice
