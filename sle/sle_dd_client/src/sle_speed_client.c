@@ -21,8 +21,8 @@
 #define THIS_FILE_ID BTH_GLE_SAMPLE_UUID_CLIENT
 
 #define SLE_MTU_SIZE_DEFAULT        1500
-#define SLE_SEEK_INTERVAL_DEFAULT   100
-#define SLE_SEEK_WINDOW_DEFAULT     100
+#define SLE_SEEK_INTERVAL_DEFAULT   CONFIG_TEST_SCAN_INTERVAL
+#define SLE_SEEK_WINDOW_DEFAULT     CONFIG_TEST_SCAN_WINDOW
 #define UUID_16BIT_LEN 2
 #define UUID_128BIT_LEN 16
 #define SLE_SPEED_HUNDRED   100        /* 100  */
@@ -34,6 +34,15 @@
 static int g_recv_pkt_num = 0;
 static uint64_t g_count_before_get_us;
 static uint64_t g_count_after_get_us;
+
+#define SLE_RSSI_CHANGE_FLAG 256
+static uint64_t g_seek_count_before_get_us;
+static uint64_t g_seek_count_after_get_us;
+static uint64_t g_seek_time;
+
+#define TEST_COUNT CONFIG_TEST_COUNT
+static uint64_t g_seek_count = 0;
+// static int g_seek_delay_us = 0;
 
 #ifdef CONFIG_LARGE_THROUGHPUT_CLIENT
 #define RECV_PKT_CNT 1000
@@ -60,6 +69,10 @@ void sle_sample_sle_enable_cbk(errcode_t status)
 void sle_sample_seek_enable_cbk(errcode_t status)
 {
     if (status == 0) {
+        // osal_printk("seek enable success\r\n");
+        g_seek_count_before_get_us = uapi_tcxo_get_us();
+        g_seek_count++;
+        osal_printk("g_seek_count_before_get_us = %llu\r\n", g_seek_count_before_get_us);
         return;
     }
 }
@@ -67,7 +80,14 @@ void sle_sample_seek_enable_cbk(errcode_t status)
 void sle_sample_seek_disable_cbk(errcode_t status)
 {
     if (status == 0) {
-        sle_connect_remote_device(&g_remote_addr);
+        // sle_connect_remote_device(&g_remote_addr);
+        // osal_printk("seek disable success\r\n");
+        if (g_seek_count < TEST_COUNT) {
+            uint32_t rand_num = rand() % 200 + 1;
+            // osal_printk("rand_num = %d\r\n", rand_num);
+            osal_msleep(rand_num);
+            sle_start_seek();
+        }
     }
 }
 
@@ -77,6 +97,12 @@ void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
         uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
         if (memcmp(seek_result_data->addr.addr, mac, SLE_ADDR_LEN) == 0) {
             (void)memcpy_s(&g_remote_addr, sizeof(sle_addr_t), &seek_result_data->addr, sizeof(sle_addr_t));
+            g_seek_count_after_get_us = uapi_tcxo_get_us();
+            osal_printk("g_seek_count_after_get_us = %llu\r\n", g_seek_count_after_get_us);
+            // osal_printk("rssi = %d dbm\r\n", seek_result_data->rssi-SLE_RSSI_CHANGE_FLAG);
+            // osal_printk("data_len = %d\r\n", seek_result_data->data_len);
+            g_seek_time = g_seek_count_after_get_us - g_seek_count_before_get_us;
+            osal_printk("g_seek_time = %llu us\r\n", g_seek_time);
             sle_stop_seek();
         }
     }
@@ -354,6 +380,7 @@ void sle_start_scan()
 int sle_speed_init(void)
 {
     osal_msleep(1000);  /* sleep 1000ms */
+    osal_printk("seek interval:%d, window:%d\r\n", SLE_SEEK_INTERVAL_DEFAULT, SLE_SEEK_WINDOW_DEFAULT);
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;
 }

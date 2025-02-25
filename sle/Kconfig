@@ -98,4 +98,28 @@ config SAMPLE_SLE_LATENCY_SERVER_SAMPLE
 config SAMPLE_SLE_LATENCY_GPIO_OBSERVER_SAMPLE
     bool "Support SLE Latency GPIO Observer."
 
+config SAMPLE_SLE_DD_CLIENT_SAMPLE
+    bool "Support SLE Device Discovery (DD) Client Sample."
+menu "SLE DD client sample configuration"
+    depends on SAMPLE_SLE_DD_CLIENT_SAMPLE
+config TEST_COUNT
+    int "Set the default test count value"
+    default 1000
+config TEST_SCAN_INTERVAL
+    int "Set the default scan interval value"
+    default 192 # 192*0.125ms = 24ms
+config TEST_SCAN_WINDOW
+    int "Set the default scan window value"
+    default 192 # 192*0.125ms = 24ms
+endmenu
+
+config SAMPLE_SLE_DD_SERVER_SAMPLE
+    bool "Support SLE Device Discovery (DD) Server Sample."
+menu "SLE DD server sample configuration"
+    depends on SAMPLE_SLE_DD_SERVER_SAMPLE
+config TEST_ADV_INTERVAL
+    int "Set the default advertising interval max value"
+    default 32 # 32*0.125ms = 4ms
+endmenu
+
 endchoice
