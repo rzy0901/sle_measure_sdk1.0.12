@@ -26,7 +26,7 @@ if(DEFINED CONFIG_SAMPLE_SLE_LATENCY_SERVER_SAMPLE)
     add_subdirectory_if_exist(sle_latency_server)
 endif()
 
-if(DEFINED SAMPLE_SLE_LATENCY_GPIO_OBSERVER_SAMPLE)
+if(DEFINED CONFIG_SAMPLE_SLE_LATENCY_GPIO_OBSERVER_SAMPLE)
     add_subdirectory_if_exist(sle_latency_gpio_observer)
 endif()
 
