@@ -122,4 +122,28 @@ config TEST_ADV_INTERVAL
     default 32 # 32*0.125ms = 4ms
 endmenu
 
+config SAMPLE_SLE_CE_CLIENT_SAMPLE
+    bool "Support SLE Connection Establishment (CE) Client Sample."
+menu "SLE CE client sample configuration"
+    depends on SAMPLE_SLE_CE_CLIENT_SAMPLE
+config TEST_COUNT
+    int "Set the default test count value"
+    default 200
+config TEST_SCAN_INTERVAL
+    int "Set the default scan interval value"
+    default 192 # 192*0.125ms = 24ms
+config TEST_SCAN_WINDOW
+    int "Set the default scan window value"
+    default 192 # 192*0.125ms = 24ms
+endmenu
+
+config SAMPLE_SLE_CE_SERVER_SAMPLE
+    bool "Support SLE Connection Establishment (CE) Server Sample."
+menu "SLE CE server sample configuration"
+    depends on SAMPLE_SLE_CE_SERVER_SAMPLE
+config TEST_ADV_INTERVAL
+    int "Set the default advertising interval max value"
+    default 32 # 32*0.125ms = 4ms
+endmenu
+
 endchoice

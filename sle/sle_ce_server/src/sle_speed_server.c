@@ -52,13 +52,16 @@ static uint16_t g_property_handle = 0;
 static sle_link_qos_state_t g_sle_link_state = 0;  /* sle link state */
 #endif
 
-#ifdef CONFIG_LARGE_THROUGHPUT_SERVER
+// #ifdef CONFIG_LARGE_THROUGHPUT_SERVER
+// #define PKT_DATA_LEN 1200
+// #define SPEED_DEFAULT_CONN_INTERVAL 0x14
+// #else
+// #define PKT_DATA_LEN 600
+// #define SPEED_DEFAULT_CONN_INTERVAL 0xA0
+// #endif
+
 #define PKT_DATA_LEN 1200
 #define SPEED_DEFAULT_CONN_INTERVAL 0x14
-#else
-#define PKT_DATA_LEN 600
-#define SPEED_DEFAULT_CONN_INTERVAL 0xA0
-#endif
 
 #define SPEED_DEFAULT_KTHREAD_SIZE 0x2000
 #define SPEED_DEFAULT_KTHREAD_PROI 26
@@ -302,14 +305,14 @@ static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
     osal_printk("[speed server] connect state changed addr:%02x:**:**:**:%02x:%02x\r\n",
         addr->addr[BT_INDEX_0], addr->addr[BT_INDEX_4], addr->addr[BT_INDEX_5]);
     g_sle_conn_hdl = conn_id;
-    sle_connection_param_update_t parame = {0};
-    parame.conn_id = conn_id;
-    parame.interval_min = SPEED_DEFAULT_CONN_INTERVAL;
-    parame.interval_max = SPEED_DEFAULT_CONN_INTERVAL;
-    parame.max_latency = 0;
-    parame.supervision_timeout = SPEED_DEFAULT_TIMEOUT_MULTIPLIER;
+    // sle_connection_param_update_t parame = {0};
+    // parame.conn_id = conn_id;
+    // parame.interval_min = SPEED_DEFAULT_CONN_INTERVAL;
+    // parame.interval_max = SPEED_DEFAULT_CONN_INTERVAL;
+    // parame.max_latency = 0;
+    // parame.supervision_timeout = SPEED_DEFAULT_TIMEOUT_MULTIPLIER;
     if (conn_state ==  SLE_ACB_STATE_CONNECTED) {
-        sle_update_connect_param(&parame);
+        // sle_update_connect_param(&parame);
     } else if (conn_state == SLE_ACB_STATE_DISCONNECTED) {
         sle_start_announce(SLE_ADV_HANDLE_DEFAULT);
     }
@@ -369,8 +372,10 @@ void sle_speed_connect_param_init(void)
     param.initiate_phys = 1;
     param.max_interval = SPEED_DEFAULT_CONN_INTERVAL;
     param.min_interval = SPEED_DEFAULT_CONN_INTERVAL;
-    param.scan_interval = SPEED_DEFAULT_SCAN_INTERVAL;
-    param.scan_window = SPEED_DEFAULT_SCAN_WINDOW;
+    param.scan_interval = 196;
+    param.scan_window = 196;
+    // param.scan_interval = SPEED_DEFAULT_SCAN_INTERVAL;
+    // param.scan_window = SPEED_DEFAULT_SCAN_WINDOW;
     param.timeout = SPEED_DEFAULT_TIMEOUT_MULTIPLIER;
     sle_default_connection_param_set(&param);
 }

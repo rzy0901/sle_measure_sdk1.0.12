@@ -21,19 +21,28 @@
 #define THIS_FILE_ID BTH_GLE_SAMPLE_UUID_CLIENT
 
 #define SLE_MTU_SIZE_DEFAULT        1500
-#define SLE_SEEK_INTERVAL_DEFAULT   100
-#define SLE_SEEK_WINDOW_DEFAULT     100
+#define SLE_SEEK_INTERVAL_DEFAULT   CONFIG_TEST_SCAN_INTERVAL
+#define SLE_SEEK_WINDOW_DEFAULT     CONFIG_TEST_SCAN_WINDOW
 #define UUID_16BIT_LEN 2
 #define UUID_128BIT_LEN 16
 #define SLE_SPEED_HUNDRED   100        /* 100  */
 #define SPEED_DEFAULT_CONN_INTERVAL 0x14
 #define SPEED_DEFAULT_TIMEOUT_MULTIPLIER 0x1f4
-#define SPEED_DEFAULT_SCAN_INTERVAL 400
-#define SPEED_DEFAULT_SCAN_WINDOW 20
+#define SPEED_DEFAULT_SCAN_INTERVAL CONFIG_TEST_SCAN_INTERVAL
+#define SPEED_DEFAULT_SCAN_WINDOW CONFIG_TEST_SCAN_WINDOW
 
 static int g_recv_pkt_num = 0;
 static uint64_t g_count_before_get_us;
 static uint64_t g_count_after_get_us;
+
+#define SLE_RSSI_CHANGE_FLAG 256
+static uint64_t g_connect_count_before_get_us;
+static uint64_t g_connect_count_after_get_us;
+static uint64_t g_connect_time;
+
+#define TEST_COUNT CONFIG_TEST_COUNT
+static uint64_t g_connect_count = 0;
+// static int g_seek_delay_us = 0;
 
 #ifdef CONFIG_LARGE_THROUGHPUT_CLIENT
 #define RECV_PKT_CNT 1000
@@ -64,10 +73,18 @@ void sle_sample_seek_enable_cbk(errcode_t status)
     }
 }
 
+void connect_remote_device(void){
+    g_connect_count_before_get_us = uapi_tcxo_get_us();
+    sle_connect_remote_device(&g_remote_addr);       
+    osal_printk("g_connect_count_before_get_us = %llu\r\n", g_connect_count_before_get_us);
+}
+
 void sle_sample_seek_disable_cbk(errcode_t status)
 {
     if (status == 0) {
-        sle_connect_remote_device(&g_remote_addr);
+        // sle_connect_remote_device(&g_remote_addr);
+        /* connect thread */
+        connect_remote_device();
     }
 }
 
@@ -136,27 +153,49 @@ void sle_sample_seek_cbk_register(void)
 void sle_sample_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *addr,
     sle_acb_state_t conn_state, sle_pair_state_t pair_state, sle_disc_reason_t disc_reason)
 {
-    osal_printk("[ssap client] conn state changed conn_id:%d, addr:%02x***%02x%02x\n", conn_id, addr->addr[0],
-        addr->addr[4], addr->addr[5]); /* 0 4 5: addr index */
-    osal_printk("[ssap client] conn state changed disc_reason:0x%x\n", disc_reason);
+    g_connect_count_after_get_us = uapi_tcxo_get_us();
+    // osal_printk("[ssap client] conn state changed conn_id:%d, addr:%02x***%02x%02x\n", conn_id, addr->addr[0],
+    //     addr->addr[4], addr->addr[5]); /* 0 4 5: addr index */
+    // osal_printk("[ssap client] conn state changed disc_reason:0x%x\n", disc_reason);
     if (conn_state == SLE_ACB_STATE_CONNECTED) {
-        if (pair_state == SLE_PAIR_NONE) {
-            sle_pair_remote_device(&g_remote_addr);
-        }
+        osal_printk("g_connect_count_after_get_us = %llu\r\n", g_connect_count_after_get_us);
         g_conn_id = conn_id;
+        g_connect_time = g_connect_count_after_get_us - g_connect_count_before_get_us;
+        osal_printk("g_connect_time = %llu us\r\n", g_connect_time);
+        g_connect_count++;
+        sle_disconnect_remote_device(&g_remote_addr);
+        // if (pair_state == SLE_PAIR_NONE) {
+        //     sle_pair_remote_device(&g_remote_addr);
+        // } else {
+        //     sle_disconnect_remote_device(&g_remote_addr);
+        // }
+    } else if (conn_state == SLE_ACB_STATE_DISCONNECTED) {
+        if (g_connect_count < TEST_COUNT) {
+            uint32_t rand_num = rand() % 200 + 1;
+            // osal_printk("rand_num = %d\r\n", rand_num);
+            osal_msleep(rand_num+200);
+            connect_remote_device();
+            // sle_start_seek();
+        }
     }
+    unused(pair_state);
+    unused(disc_reason);
+    unused(addr);
+
 }
 
 void sle_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errcode_t status)
 {
+    unused(status);
     osal_printk("[ssap client] pair complete conn_id:%d, addr:%02x***%02x%02x\n", conn_id, addr->addr[0],
         addr->addr[4], addr->addr[5]); /* 0 4 5: addr index */
-    if (status == 0) {
-        ssap_exchange_info_t info = {0};
-        info.mtu_size = SLE_MTU_SIZE_DEFAULT;
-        info.version = 1;
-        ssapc_exchange_info_req(1, g_conn_id, &info);
-    }
+    sle_disconnect_remote_device(&g_remote_addr);
+    // if (status == 0) {
+    //     ssap_exchange_info_t info = {0};
+    //     info.mtu_size = SLE_MTU_SIZE_DEFAULT;
+    //     info.version = 1;
+    //     ssapc_exchange_info_req(1, g_conn_id, &info);
+    // }
 }
 
 void sle_sample_update_cbk(uint16_t conn_id, errcode_t status, const sle_connection_param_update_evt_t *param)
@@ -317,6 +356,7 @@ void sle_speed_connect_param_init(void)
     param.scan_interval = SPEED_DEFAULT_SCAN_INTERVAL;
     param.scan_window = SPEED_DEFAULT_SCAN_WINDOW;
     param.timeout = SPEED_DEFAULT_TIMEOUT_MULTIPLIER;
+    osal_printk("[sle_speed_connect_param_init] scan interval:%d, window:%d\r\n", SPEED_DEFAULT_SCAN_INTERVAL, SPEED_DEFAULT_SCAN_WINDOW);
     sle_default_connection_param_set(&param);
 }
 
@@ -354,6 +394,7 @@ void sle_start_scan()
 int sle_speed_init(void)
 {
     osal_msleep(1000);  /* sleep 1000ms */
+    osal_printk("seek interval:%d, window:%d\r\n", SLE_SEEK_INTERVAL_DEFAULT, SLE_SEEK_WINDOW_DEFAULT);
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;
 }
