@@ -31,24 +31,34 @@
 #define SPEED_DEFAULT_SCAN_INTERVAL 400
 #define SPEED_DEFAULT_SCAN_WINDOW 20
 
-static int g_recv_pkt_num = 0;
-static uint64_t g_count_before_get_us;
-static uint64_t g_count_after_get_us;
+#define MAX_SERVERS CONFIG_NUM_OF_SERVERS
 
-#ifdef CONFIG_LARGE_THROUGHPUT_CLIENT
+static int g_recv_pkt_num[MAX_SERVERS] = {0};
+static uint64_t g_count_before_get_us[MAX_SERVERS] = {0};
+static uint64_t g_count_after_get_us[MAX_SERVERS] = {0};
+
 #define RECV_PKT_CNT 1000
-#else
-#define RECV_PKT_CNT 1
-#endif
-static int g_rssi_sum = 0;
-static int g_rssi_number = 0;
+static int g_rssi_sum[MAX_SERVERS] = {0};
+static int g_rssi_number[MAX_SERVERS] = {0};
 
 static sle_announce_seek_callbacks_t g_seek_cbk = {0};
 static sle_connection_callbacks_t    g_connect_cbk = {0};
 static ssapc_callbacks_t             g_ssapc_cbk = {0};
-static sle_addr_t                    g_remote_addr = {0};
-static uint16_t                      g_conn_id = 0;
-static ssapc_find_service_result_t   g_find_service_result = {0};
+static sle_addr_t                    g_remote_addr[MAX_SERVERS] = {0};
+static uint16_t                      g_conn_id[MAX_SERVERS] = {0};
+static ssapc_find_service_result_t   g_find_service_result[MAX_SERVERS] = {0};
+
+static bool g_is_scanned[MAX_SERVERS] = {false};
+static bool g_is_connected[MAX_SERVERS] = {false};
+
+uint8_t mac[6][SLE_ADDR_LEN] = {
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x11},
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x22},
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x33},
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x44},
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x55},
+    {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+};
 
 void sle_sample_sle_enable_cbk(errcode_t status)
 {
@@ -67,18 +77,36 @@ void sle_sample_seek_enable_cbk(errcode_t status)
 void sle_sample_seek_disable_cbk(errcode_t status)
 {
     if (status == 0) {
-        sle_connect_remote_device(&g_remote_addr);
+        /* 打印所有的扫描到的地址 */
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            osal_printk("g_remote_addr[%d].type = %d, g_remote_addr[%d].addr = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+                i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
+                g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
+        }        
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            sle_connect_remote_device(&g_remote_addr[i]);
+            osal_msleep(1000);  /* sleep 1000ms */
+        }
     }
 }
 
 void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
 {
     if (seek_result_data != NULL) {
-        uint8_t mac[SLE_ADDR_LEN] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
-        if (memcmp(seek_result_data->addr.addr, mac, SLE_ADDR_LEN) == 0) {
-            (void)memcpy_s(&g_remote_addr, sizeof(sle_addr_t), &seek_result_data->addr, sizeof(sle_addr_t));
-            sle_stop_seek();
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            if (memcmp(seek_result_data->addr.addr, mac[i], SLE_ADDR_LEN) == 0 && g_is_scanned[i] == false) {
+                g_remote_addr[i].type = 0;
+                (void)memcpy_s(g_remote_addr[i].addr, SLE_ADDR_LEN, mac[i], SLE_ADDR_LEN);
+                g_is_scanned[i] = true;
+            }
         }
+        /* 判断n个设备都扫到，停止扫描 */
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            if (g_is_scanned[i] == false) {
+                return;
+            }
+        }
+        sle_stop_seek();
     }
 }
 
@@ -99,21 +127,29 @@ static void sle_speed_notification_cb(uint8_t client_id, uint16_t conn_id, ssapc
     unused(status);
     sle_read_remote_device_rssi(conn_id); // 用于统计rssi均值
 
-    if (g_recv_pkt_num == 0) {
-        g_count_before_get_us = uapi_tcxo_get_us();
-    } else if (g_recv_pkt_num == RECV_PKT_CNT) {
-        g_count_after_get_us = uapi_tcxo_get_us();
-        printf("g_count_after_get_us = %llu, g_count_before_get_us = %llu, data_len = %d\r\n",
-            g_count_after_get_us, g_count_before_get_us, data->data_len);
-        float time = (float)(g_count_after_get_us - g_count_before_get_us) / 1000000.0;  /* 1s = 1000000.0us */
-        printf("time = %d.%d s\r\n", get_float_int(time), get_float_dec(time));
-        uint16_t len = data->data_len;
-        float speed = len * RECV_PKT_CNT * 8 / time;  /* 1B = 8bits */
-        printf("speed = %d.%d bps\r\n", get_float_int(speed), get_float_dec(speed));
-        g_recv_pkt_num = 0;
-        g_count_before_get_us = g_count_after_get_us;
+    for (int i = 0; i < MAX_SERVERS; i++) {
+        if (g_conn_id[i] == conn_id) {
+            if (g_recv_pkt_num[i] == 0) {
+                g_count_before_get_us[i] = uapi_tcxo_get_us();
+            } else if (g_recv_pkt_num[i] == RECV_PKT_CNT) {
+                g_count_after_get_us[i] = uapi_tcxo_get_us();
+                printf("g_count_after_get_us[%d] = %llu, g_count_before_get_us[%d] = %llu, data_len = %d\r\n",
+                    i, g_count_after_get_us[i], i, g_count_before_get_us[i], data->data_len);
+                float time = (float)(g_count_after_get_us[i] - g_count_before_get_us[i]) / 1000000.0;  /* 1s = 1000000.0us */
+                printf("time = %d.%d s\r\n", get_float_int(time), get_float_dec(time));
+                uint16_t len = data->data_len;
+                float speed = len * RECV_PKT_CNT * 8 / time;  /* 1B = 8bits */
+                printf("conn_id = %d, speed = %d.%d bps\r\n", conn_id, get_float_int(speed), get_float_dec(speed));
+                printf("conn_id = %d, peer address = %02x:%02x:%02x:%02x:%02x:%02x\r\n", conn_id,
+                    g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
+                    g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
+                g_recv_pkt_num[i] = 0;
+                g_count_before_get_us[i] = g_count_after_get_us[i];
+            }
+            g_recv_pkt_num[i]++;
+            break;
+        }
     }
-    g_recv_pkt_num++;
 }
 
 static void sle_speed_indication_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data,
@@ -140,10 +176,33 @@ void sle_sample_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
         addr->addr[4], addr->addr[5]); /* 0 4 5: addr index */
     osal_printk("[ssap client] conn state changed disc_reason:0x%x\n", disc_reason);
     if (conn_state == SLE_ACB_STATE_CONNECTED) {
-        if (pair_state == SLE_PAIR_NONE) {
-            sle_pair_remote_device(&g_remote_addr);
+        // 比较地址，以获得index
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            if (memcmp(g_remote_addr[i].addr, addr->addr, SLE_ADDR_LEN) == 0) {
+                g_conn_id[i] = conn_id;
+                g_is_connected[i] = true;
+                break;
+            }
         }
-        g_conn_id = conn_id;
+        if (pair_state == SLE_PAIR_NONE) {
+            // 如果全部连接上，开始发送数据
+            for (int i = 0; i < MAX_SERVERS; i++) {
+                if (g_is_connected[i] == false) {
+                    return;
+                }
+            }
+            // 打印所有的conn_id 和 addr
+            for (int i = 0; i < MAX_SERVERS; i++) {
+                osal_printk("g_conn_id[%d] = %d, g_remote_addr[%d].type = %d, g_remote_addr[%d].addr = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+                    i, g_conn_id[i], i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
+                    g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
+            }
+            osal_printk("all connected, start pair\r\n");
+            osal_msleep(1000);  /* sleep 1000ms */
+            for (int i = 0; i < MAX_SERVERS; i++) {
+                sle_pair_remote_device(&g_remote_addr[i]);
+            }
+        }
     }
 }
 
@@ -155,7 +214,7 @@ void sle_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errc
         ssap_exchange_info_t info = {0};
         info.mtu_size = SLE_MTU_SIZE_DEFAULT;
         info.version = 1;
-        ssapc_exchange_info_req(1, g_conn_id, &info);
+        ssapc_exchange_info_req(1, conn_id, &info);
     }
 }
 
@@ -169,20 +228,25 @@ void sle_sample_update_req_cbk(uint16_t conn_id, errcode_t status, const sle_con
 {
     unused(conn_id);
     unused(status);
-    osal_printk("[ssap client] sle_sample_update_req_cbk interval_min = %02x, interval_max = %02x\n",
-        param->interval_min, param->interval_max);
+    osal_printk("[ssap client] sle_sample_update_req_cbk conn_id:%d, interval_min = %02x, interval_max = %02x\n",
+        conn_id, param->interval_min, param->interval_max);
 }
 
 void sle_sample_read_rssi_cbk(uint16_t conn_id, int8_t rssi, errcode_t status)
 {
     unused(conn_id);
     unused(status);
-    g_rssi_sum = g_rssi_sum + rssi;
-    g_rssi_number++;
-    if (g_rssi_number == RECV_PKT_CNT) {
-        osal_printk("rssi average = %d dbm\r\n", g_rssi_sum / g_rssi_number);
-        g_rssi_sum = 0;
-        g_rssi_number = 0;
+    for (int i = 0; i < MAX_SERVERS; i++) {
+        if (g_conn_id[i] == conn_id) {
+            g_rssi_sum[i] = g_rssi_sum[i] + rssi;
+            g_rssi_number[i]++;
+            if (g_rssi_number[i] == RECV_PKT_CNT) {
+                osal_printk("conn_id: %d, rssi average = %d dbm\r\n", conn_id, g_rssi_sum[i] / g_rssi_number[i]);
+                g_rssi_sum[i] = 0;
+                g_rssi_number[i] = 0;
+            }
+            break;
+        }
     }
 }
 
@@ -198,7 +262,7 @@ void sle_sample_connect_cbk_register(void)
 void sle_sample_exchange_info_cbk(uint8_t client_id, uint16_t conn_id, ssap_exchange_info_t *param,
     errcode_t status)
 {
-    osal_printk("[ssap client] pair complete client id:%d status:%d\n", client_id, status);
+    osal_printk("[ssap client] pair complete client id:%d conn_id:%d, status:%d\n", client_id, conn_id, status);
     osal_printk("[ssap client] exchange mtu, mtu size: %d, version: %d.\n",
         param->mtu_size, param->version);
 
@@ -224,9 +288,14 @@ void sle_sample_find_structure_cbk(uint8_t client_id, uint16_t conn_id, ssapc_fi
             osal_printk("[ssap client] structure uuid[%d]:[0x%02x]\r\n", idx, service->uuid.uuid[idx]);
         }
     }
-    g_find_service_result.start_hdl = service->start_hdl;
-    g_find_service_result.end_hdl = service->end_hdl;
-    memcpy_s(&g_find_service_result.uuid, sizeof(sle_uuid_t), &service->uuid, sizeof(sle_uuid_t));
+    for (int i = 0; i < MAX_SERVERS; i++) {
+        if (g_conn_id[i] == conn_id) {
+            g_find_service_result[i].start_hdl = service->start_hdl;
+            g_find_service_result[i].end_hdl = service->end_hdl;
+            memcpy_s(&g_find_service_result[i].uuid, sizeof(sle_uuid_t), &service->uuid, sizeof(sle_uuid_t));
+            break;
+        }
+    }
 }
 
 void sle_sample_find_structure_cmp_cbk(uint8_t client_id, uint16_t conn_id,
@@ -246,7 +315,13 @@ void sle_sample_find_structure_cmp_cbk(uint8_t client_id, uint16_t conn_id,
     uint8_t data[] = {0x11, 0x22, 0x33, 0x44};
     uint8_t len = sizeof(data);
     ssapc_write_param_t param = {0};
-    param.handle = g_find_service_result.start_hdl;
+    // 获取conn_id对应的index
+    for (int i = 0; i < MAX_SERVERS; i++) {
+        if (g_conn_id[i] == conn_id) {
+            param.handle = g_find_service_result[i].start_hdl;
+            break;
+        }
+    }
     param.type = SSAP_PROPERTY_TYPE_VALUE;
     param.data_len = len;
     param.data = data;
@@ -353,6 +428,7 @@ void sle_start_scan()
 
 int sle_speed_init(void)
 {
+    osal_printk("CONFIG_NUM_OF_SERVERS = %d\r\n", CONFIG_NUM_OF_SERVERS);
     osal_msleep(1000);  /* sleep 1000ms */
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;

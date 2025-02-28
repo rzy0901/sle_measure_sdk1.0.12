@@ -46,5 +46,9 @@ if(DEFINED CONFIG_SAMPLE_SLE_CE_SERVER_SAMPLE)
     add_subdirectory_if_exist(sle_ce_server)
 endif()
 
+if(DEFINED CONFIG_SAMPLE_SUPPORT_SLE_SPEED_CLIENT_1_VS_N_SAMPLE)
+    add_subdirectory_if_exist(sle_speed_client_1_vs_n)
+endif()
+
 set(SOURCES "${SOURCES}" PARENT_SCOPE)
 set(PUBLIC_HEADER "${PUBLIC_HEADER}" PARENT_SCOPE)
