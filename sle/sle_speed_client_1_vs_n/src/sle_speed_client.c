@@ -51,6 +51,8 @@ static ssapc_find_service_result_t   g_find_service_result[MAX_SERVERS] = {0};
 static bool g_is_scanned[MAX_SERVERS] = {false};
 static bool g_is_connected[MAX_SERVERS] = {false};
 
+static int g_cur_conn_index = 0;
+
 uint8_t mac[6][SLE_ADDR_LEN] = {
     {0x11, 0x22, 0x33, 0x44, 0x55, 0x11},
     {0x11, 0x22, 0x33, 0x44, 0x55, 0x22},
@@ -83,10 +85,12 @@ void sle_sample_seek_disable_cbk(errcode_t status)
                 i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
                 g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
         }        
-        for (int i = 0; i < MAX_SERVERS; i++) {
-            sle_connect_remote_device(&g_remote_addr[i]);
-            osal_msleep(1000);  /* sleep 1000ms */
-        }
+        // for (int i = 0; i < MAX_SERVERS; i++) {
+        //     sle_connect_remote_device(&g_remote_addr[i]);
+        //     // osal_msleep(1000);  /* sleep 1000ms */
+        //     osal_msleep(5000);  /* sleep 5000ms */
+        // }
+        sle_connect_remote_device(&g_remote_addr[g_cur_conn_index]);
     }
 }
 
@@ -176,27 +180,40 @@ void sle_sample_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
         addr->addr[4], addr->addr[5]); /* 0 4 5: addr index */
     osal_printk("[ssap client] conn state changed disc_reason:0x%x\n", disc_reason);
     if (conn_state == SLE_ACB_STATE_CONNECTED) {
-        // 比较地址，以获得index
-        for (int i = 0; i < MAX_SERVERS; i++) {
-            if (memcmp(g_remote_addr[i].addr, addr->addr, SLE_ADDR_LEN) == 0) {
-                g_conn_id[i] = conn_id;
-                g_is_connected[i] = true;
-                break;
-            }
-        }
-        if (pair_state == SLE_PAIR_NONE) {
-            // 如果全部连接上，开始发送数据
-            for (int i = 0; i < MAX_SERVERS; i++) {
-                if (g_is_connected[i] == false) {
-                    return;
-                }
-            }
-            // 打印所有的conn_id 和 addr
-            for (int i = 0; i < MAX_SERVERS; i++) {
-                osal_printk("g_conn_id[%d] = %d, g_remote_addr[%d].type = %d, g_remote_addr[%d].addr = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-                    i, g_conn_id[i], i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
-                    g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
-            }
+        // // 比较地址，以获得index
+        // for (int i = 0; i < MAX_SERVERS; i++) {
+        //     if (memcmp(g_remote_addr[i].addr, addr->addr, SLE_ADDR_LEN) == 0) {
+        //         g_conn_id[i] = conn_id;
+        //         g_is_connected[i] = true;
+        //         break;
+        //     }
+        // }
+        // if (pair_state == SLE_PAIR_NONE) {
+        //     // 如果全部连接上，开始发送数据
+        //     for (int i = 0; i < MAX_SERVERS; i++) {
+        //         if (g_is_connected[i] == false) {
+        //             return;
+        //         }
+        //     }
+        //     // 打印所有的conn_id 和 addr
+        //     for (int i = 0; i < MAX_SERVERS; i++) {
+        //         osal_printk("g_conn_id[%d] = %d, g_remote_addr[%d].type = %d, g_remote_addr[%d].addr = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+        //             i, g_conn_id[i], i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
+        //             g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
+        //     }
+        //     osal_printk("all connected, start pair\r\n");
+        //     osal_msleep(1000);  /* sleep 1000ms */
+        //     for (int i = 0; i < MAX_SERVERS; i++) {
+        //         sle_pair_remote_device(&g_remote_addr[i]);
+        //     }
+        // }
+        g_is_connected[g_cur_conn_index] = true;
+        g_conn_id[g_cur_conn_index] = conn_id;      
+        g_cur_conn_index++;
+        if (g_cur_conn_index < MAX_SERVERS) {
+            sle_connect_remote_device(&g_remote_addr[g_cur_conn_index]);
+        } else {
+            unused(pair_state);
             osal_printk("all connected, start pair\r\n");
             osal_msleep(1000);  /* sleep 1000ms */
             for (int i = 0; i < MAX_SERVERS; i++) {

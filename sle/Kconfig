@@ -38,6 +38,9 @@ config MCS
 config MAX_TX_POWER_LEVEL
     int "Set max tx power level (nv: 0x20A0)."
     default 7
+config SEND_DELAY_MS
+    int "Set send delay ms."
+    default 0
 
 config SLE_MAC_ADDR_1ST_BYTE
     hex "Set MAC address 1st byte."

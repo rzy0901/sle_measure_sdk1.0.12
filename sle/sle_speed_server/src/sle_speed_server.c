@@ -199,6 +199,8 @@ void send_data_thread_function(void)
 #else
     // osal_printk("code: GFSK, PHY 1MHZ, power: 20dbm \r\n");
 #endif
+    osal_printk("sleeep %dms\r\n", CONFIG_SEND_DELAY_MS);
+    osal_msleep(CONFIG_SEND_DELAY_MS);     /* sleep 10000ms */
     int i = 0;
     while (1) {
         if (sle_flow_ctrl_flag() > 0) {
