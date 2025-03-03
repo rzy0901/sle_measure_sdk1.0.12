@@ -21,15 +21,15 @@
 #define THIS_FILE_ID BTH_GLE_SAMPLE_UUID_CLIENT
 
 #define SLE_MTU_SIZE_DEFAULT        1500
-#define SLE_SEEK_INTERVAL_DEFAULT   100
-#define SLE_SEEK_WINDOW_DEFAULT     100
+#define SLE_SEEK_INTERVAL_DEFAULT   CONFIG_TEST_SCAN_INTERVAL
+#define SLE_SEEK_WINDOW_DEFAULT     CONFIG_TEST_SCAN_WINDOW
 #define UUID_16BIT_LEN 2
 #define UUID_128BIT_LEN 16
 #define SLE_SPEED_HUNDRED   100        /* 100  */
 #define SPEED_DEFAULT_CONN_INTERVAL 0x14
 #define SPEED_DEFAULT_TIMEOUT_MULTIPLIER 0x1f4
-#define SPEED_DEFAULT_SCAN_INTERVAL 400
-#define SPEED_DEFAULT_SCAN_WINDOW 20
+#define SPEED_DEFAULT_SCAN_INTERVAL CONFIG_TEST_SCAN_INTERVAL
+#define SPEED_DEFAULT_SCAN_WINDOW CONFIG_TEST_SCAN_WINDOW
 
 #define MAX_SERVERS CONFIG_NUM_OF_SERVERS
 
@@ -53,6 +53,12 @@ static bool g_is_connected[MAX_SERVERS] = {false};
 
 static int g_cur_conn_index = 0;
 
+static uint64_t g_seek_count_before_get_us;
+static uint64_t g_seek_count_after_get_us;
+static uint64_t g_seek_time;
+#define TEST_COUNT CONFIG_TEST_COUNT
+static uint64_t g_seek_count = 0;
+
 uint8_t mac[6][SLE_ADDR_LEN] = {
     {0x11, 0x22, 0x33, 0x44, 0x55, 0x11},
     {0x11, 0x22, 0x33, 0x44, 0x55, 0x22},
@@ -72,6 +78,9 @@ void sle_sample_sle_enable_cbk(errcode_t status)
 void sle_sample_seek_enable_cbk(errcode_t status)
 {
     if (status == 0) {
+        g_seek_count_before_get_us = uapi_tcxo_get_us();
+        g_seek_count++;
+        osal_printk("g_seek_count_before_get_us = %llu\r\n", g_seek_count_before_get_us);
         return;
     }
 }
@@ -84,18 +93,29 @@ void sle_sample_seek_disable_cbk(errcode_t status)
             osal_printk("g_remote_addr[%d].type = %d, g_remote_addr[%d].addr = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                 i, g_remote_addr[i].type, i, g_remote_addr[i].addr[0], g_remote_addr[i].addr[1], g_remote_addr[i].addr[2],
                 g_remote_addr[i].addr[3], g_remote_addr[i].addr[4], g_remote_addr[i].addr[5]);
-        }        
+        }
+
+        #ifdef CONFIG_TEST_CE // 测试connection establishment，阻塞连接操作        
         // for (int i = 0; i < MAX_SERVERS; i++) {
         //     sle_connect_remote_device(&g_remote_addr[i]);
         //     // osal_msleep(1000);  /* sleep 1000ms */
         //     osal_msleep(5000);  /* sleep 5000ms */
         // }
         sle_connect_remote_device(&g_remote_addr[g_cur_conn_index]);
+        #endif
+
+        if (g_seek_count < TEST_COUNT) {
+            uint32_t rand_num = rand() % 200 + 1;
+            // osal_printk("rand_num = %d\r\n", rand_num);
+            osal_msleep(rand_num);
+            sle_start_seek();
+        }
     }
 }
 
 void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
 {
+    g_seek_count_after_get_us = uapi_tcxo_get_us();
     if (seek_result_data != NULL) {
         for (int i = 0; i < MAX_SERVERS; i++) {
             if (memcmp(seek_result_data->addr.addr, mac[i], SLE_ADDR_LEN) == 0 && g_is_scanned[i] == false) {
@@ -109,6 +129,12 @@ void sle_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
             if (g_is_scanned[i] == false) {
                 return;
             }
+        }
+        g_seek_time = g_seek_count_after_get_us - g_seek_count_before_get_us;
+        osal_printk("g_seek_time = %llu us\r\n", g_seek_time);
+        /* 重新设置g_is_scanned为false */
+        for (int i = 0; i < MAX_SERVERS; i++) {
+            g_is_scanned[i] = false;
         }
         sle_stop_seek();
     }
@@ -433,7 +459,8 @@ void sle_start_scan()
 {
     sle_seek_param_t param = {0};
     param.own_addr_type = 0;
-    param.filter_duplicates = 0;
+    // param.filter_duplicates = 0;
+    param.filter_duplicates = 1; // 打开重复过滤开关
     param.seek_filter_policy = 0;
     param.seek_phys = 1;
     param.seek_type[0] = 0;
@@ -446,6 +473,7 @@ void sle_start_scan()
 int sle_speed_init(void)
 {
     osal_printk("CONFIG_NUM_OF_SERVERS = %d\r\n", CONFIG_NUM_OF_SERVERS);
+    osal_printk("seek interval:%d, window:%d\r\n", SLE_SEEK_INTERVAL_DEFAULT, SLE_SEEK_WINDOW_DEFAULT);
     osal_msleep(1000);  /* sleep 1000ms */
     sle_client_init(sle_speed_notification_cb, sle_speed_indication_cb);
     return 0;

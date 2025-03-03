@@ -160,4 +160,22 @@ menu "SLE speed client 1 vs N sample configuration"
         int "Set the number of servers (2 <= n <= 6)."
         default 2
 endmenu
+
+config SAMPLE_SUPPORT_SLE_DD_CLIENT_1_VS_N_SAMPLE
+    bool "Support SLE Device Discovery Client 1 vs N Sample."
+menu "SLE speed client 1 vs N sample configuration"
+    depends on SAMPLE_SUPPORT_SLE_DD_CLIENT_1_VS_N_SAMPLE
+config NUM_OF_SERVERS
+    int "Set the number of servers (2 <= n <= 6)."
+    default 2
+config TEST_SCAN_INTERVAL
+    int "Set the default scan interval value"
+    default 520 # 520*0.125ms = 6.5ms
+config TEST_SCAN_WINDOW
+    int "Set the default scan window value"
+    default 52 # 52*0.125ms = 6.5ms
+config TEST_COUNT
+    int "Set the default test count value"
+    default 200
+endmenu
 endchoice
