@@ -19,9 +19,9 @@
 /* 连接调度间隔12.5ms，单位125us */
 #define SLE_CONN_INTV_MAX_DEFAULT                 0xA
 /* 连接调度间隔25ms，单位125us */
-#define SLE_ADV_INTERVAL_MIN_DEFAULT              0xC8
+#define SLE_ADV_INTERVAL_MIN_DEFAULT              CONFIG_TEST_ADV_INTERVAL
 /* 连接调度间隔25ms，单位125us */
-#define SLE_ADV_INTERVAL_MAX_DEFAULT              0xC8
+#define SLE_ADV_INTERVAL_MAX_DEFAULT              CONFIG_TEST_ADV_INTERVAL
 /* 超时时间5000ms，单位10ms */
 #define SLE_CONN_SUPERVISION_TIMEOUT_DEFAULT      0x1F4
 /* 超时时间4990ms，单位10ms */
@@ -129,6 +129,7 @@ static int sle_set_default_announce_param(void)
     param.conn_supervision_timeout = SLE_CONN_SUPERVISION_TIMEOUT_DEFAULT;
     param.announce_tx_power = SLE_ADV_TX_POWER;
     param.own_addr.type = 0;
+    osal_printk("adv interval min:%d, max:%d\r\n", param.announce_interval_min, param.announce_interval_max);
     memcpy_s(param.own_addr.addr, SLE_ADDR_LEN, mac, SLE_ADDR_LEN);
     return sle_set_announce_param(param.announce_handle, &param);
 }

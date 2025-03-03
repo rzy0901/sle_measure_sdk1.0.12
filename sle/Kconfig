@@ -41,6 +41,9 @@ config MAX_TX_POWER_LEVEL
 config SEND_DELAY_MS
     int "Set send delay ms."
     default 0
+config TEST_ADV_INTERVAL
+    int "Set the default advertising interval max value"
+    default 32 # 32*0.125ms = 4ms
 
 config SLE_MAC_ADDR_1ST_BYTE
     hex "Set MAC address 1st byte."
